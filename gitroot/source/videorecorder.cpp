@@ -59,12 +59,28 @@ CVideoRecorderForm::CVideoRecorderForm() :
 
 	m_capturesession.setVideoOutput(&m_videowidget);
 
-
 	QCamera* pcamera = new QCamera();
 	m_capturesession.setCamera(pcamera);
 	pcamera->start();
 	m_capturesession.setAudioInput(&m_audin);
+	
+	
 	m_capturesession.setRecorder(&m_recorder);
+
+
+	//QAudioFormat format;
+	//format.setSampleRate(8000);
+	//format.setChannelCount(1);
+	//format.setSampleFormat(QAudioFormat::Int16);
+	//
+	//m_audiosource.reset(new QAudioSource(QMediaDevices::defaultAudioInput(), format));
+	//
+	//QIODevice * iodev = m_audiosource.start();
+	//m_audiosink.start(iodev);
+
+
+	qDebug() << m_mediaplayer.mediaStatus();
+
 
 	connect(cbVideoInputs, SIGNAL(currentIndexChanged(int)), this, SLOT(handleVideoInputstIndexChanged(int)));
 

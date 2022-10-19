@@ -23,6 +23,14 @@
 
 #include <QMediaRecorder>
 
+// not ready
+//#include <QAudioOutput>
+#include <QAudioSink>
+#include <QMediaPlayer>
+//#include <QBuffer>
+#include <QAudioSource>
+// ---
+
 class CVideoRecorderForm :
 
 	public QWidget,
@@ -78,5 +86,16 @@ class CVideoRecorderForm :
 		QMediaRecorder	m_recorder;
 
 		QLabel			m_labelDuration;
+
+
+		// -- not ready
+		//QAudioOutput	m_audiooutput;
+		QMediaPlayer	m_mediaplayer;
+		QAudioSink		m_audiosink;
+		//QByteArray	m_bytearray;
+		//QBuffer		m_buffer;
+		QAudioSource	m_audiosource;
+		QAudioInput		m_audioinput;
+		// ---
 
 };
