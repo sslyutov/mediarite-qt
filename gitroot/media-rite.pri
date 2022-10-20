@@ -11,9 +11,13 @@ HEADERS += $${SRCROOT}/videorecorder.h
 
 HEADERS += $${SRCROOT}/constants.h
 
+HEADERS += $${SRCROOT}/playthrough.h
+
 SOURCES += $${SRCROOT}/media-rite.cpp
 
 SOURCES += $${SRCROOT}/videorecorder.cpp
+
+SOURCES += $${SRCROOT}/playthrough.cpp
 
 FORMS += $${SRCROOT}/videorecorder.ui
 

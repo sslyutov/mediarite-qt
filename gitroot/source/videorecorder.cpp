@@ -26,6 +26,8 @@
 
 #include "constants.h"
 
+#include "playthrough.h"
+
 CVideoRecorderForm::CVideoRecorderForm() :
 	QWidget(),
 	Ui_VideoRecorderForm(),
@@ -68,15 +70,10 @@ CVideoRecorderForm::CVideoRecorderForm() :
 	m_capturesession.setRecorder(&m_recorder);
 
 
-	//QAudioFormat format;
-	//format.setSampleRate(8000);
-	//format.setChannelCount(1);
-	//format.setSampleFormat(QAudioFormat::Int16);
-	//
-	//m_audiosource.reset(new QAudioSource(QMediaDevices::defaultAudioInput(), format));
-	//
-	//QIODevice * iodev = m_audiosource.start();
-	//m_audiosink.start(iodev);
+	//m_playthough.reset();
+	//m_playthough.init(m_audin)
+
+
 
 
 	qDebug() << m_mediaplayer.mediaStatus();
@@ -198,6 +195,9 @@ void CVideoRecorderForm::handleAudioInputsIndexChanged(int)
 
 			m_audin.setDevice(auddev);
 
+			m_playthough.reset();
+
+			m_playthough.init(auddev.description());
 		}
 	}
 };

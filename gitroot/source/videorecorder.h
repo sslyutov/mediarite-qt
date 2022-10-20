@@ -23,13 +23,16 @@
 
 #include <QMediaRecorder>
 
+#include "playthrough.h"
+
 // not ready
 //#include <QAudioOutput>
-#include <QAudioSink>
+//#include <QAudioSink>
 #include <QMediaPlayer>
 //#include <QBuffer>
-#include <QAudioSource>
+//#include <QAudioSource>
 // ---
+
 
 class CVideoRecorderForm :
 
@@ -88,14 +91,17 @@ class CVideoRecorderForm :
 		QLabel			m_labelDuration;
 
 
+		CPlaythrough	m_playthough;
+
+
 		// -- not ready
 		//QAudioOutput	m_audiooutput;
 		QMediaPlayer	m_mediaplayer;
-		QAudioSink		m_audiosink;
-		//QByteArray	m_bytearray;
-		//QBuffer		m_buffer;
-		QAudioSource	m_audiosource;
-		QAudioInput		m_audioinput;
+//		QAudioSink		m_audiosink;
+//		//QByteArray	m_bytearray;
+//		//QBuffer		m_buffer;
+//		QAudioSource	m_audiosource;
+//		QAudioInput		m_audioinput;
 		// ---
 
 };
