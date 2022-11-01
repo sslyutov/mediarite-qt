@@ -16,6 +16,10 @@
 
 #include <QIODevice>
 
+#include <QBuffer>
+
+#include <QSettings>
+
 class CPlaythrough : public QWidget
 {
 
@@ -29,24 +33,27 @@ class CPlaythrough : public QWidget
 
 		void reset();
 
+		void volume(int vol) { 
+			m_audiosink->setVolume((float)vol / 100.0);
+		};
+		int volume(void) { 
+			return (int)(m_audiosink->volume() * 100.0);
+		};
+		
+
 	protected:
 
 	private:
-
-
-		/*!\brief output to audio device */
-		class CAudiosink : public QAudioSink // output to audio device
-		{
-			public:
-				CAudiosink(): QAudioSink() {};
-
-		};
 
 		QAudioSource*	m_audiosource;
 
 		QAudioSink*		m_audiosink;
 
 		QIODevice*		m_iosource;
+
+		QBuffer			m_buffer;
+
+		const char* playthrough_volume_flag = "playthrough_volume";
 
 };
 

@@ -10,6 +10,8 @@
 
 #include <QThread>
 
+#include <QSettings>
+
 
 CPlaythrough::CPlaythrough()
 	: QWidget()
@@ -22,6 +24,8 @@ CPlaythrough::CPlaythrough()
 
 CPlaythrough::~CPlaythrough()
 {
+	QSettings().setValue(playthrough_volume_flag, m_audiosink->volume());
+
 	reset();
 };
 
@@ -74,7 +78,11 @@ void CPlaythrough::init(QString audiosrcname, QString audiosinkname)
 
 	QThread::msleep(200); // this delay sometimes required to for successfull work of both devices
 
+	m_audiosink->setVolume(QSettings().value(playthrough_volume_flag, 1.0).toFloat());
+
 	m_audiosink->start(m_iosource);
+	
 };
+
 
 

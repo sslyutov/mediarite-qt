@@ -28,6 +28,8 @@
 
 #include "playthrough.h"
 
+#include <QSlider>
+
 CVideoRecorderForm::CVideoRecorderForm() :
 	QWidget(),
 	Ui_VideoRecorderForm(),
@@ -66,18 +68,7 @@ CVideoRecorderForm::CVideoRecorderForm() :
 	pcamera->start();
 	m_capturesession.setAudioInput(&m_audin);
 	
-	
 	m_capturesession.setRecorder(&m_recorder);
-
-
-	//m_playthough.reset();
-	//m_playthough.init(m_audin)
-
-
-
-
-	qDebug() << m_mediaplayer.mediaStatus();
-
 
 	connect(cbVideoInputs, SIGNAL(currentIndexChanged(int)), this, SLOT(handleVideoInputstIndexChanged(int)));
 
@@ -100,11 +91,22 @@ CVideoRecorderForm::CVideoRecorderForm() :
 		QTime time(0, 0, 0, 0);
 		QTime ti = time.addMSecs(duration);
 		m_labelDuration.setText(QString("duration: %1").arg(ti.toString("hh:mm:ss.zzz")));
-		});
+	});
+
+
+	hsVolume->setMinimum(0);
+	hsVolume->setMaximum(100);
+	hsVolume->setValue(m_playthough.volume());
+	connect(hsVolume, &QSlider::valueChanged, [=](int value) {
+		m_playthough.volume(value);
+	});
+	
 
 
 	QMediaFormat medfor = m_recorder.mediaFormat();
 
+
+	// the code below is passive now
 	int sel = 0;
 	QList<QMediaFormat::VideoCodec> videoCodes = medfor.supportedVideoCodecs((QMediaFormat::ConversionMode)QMediaFormat::Encode);
 	cbVideoCodec->addItem("Unspecified", (int)QMediaFormat::VideoCodec::Unspecified);
@@ -145,8 +147,6 @@ CVideoRecorderForm::CVideoRecorderForm() :
 
 	pushVideoSettings->setVisible(false);
 	pushAudioSettings->setVisible(false);
-
-
 };
 
 CVideoRecorderForm::~CVideoRecorderForm()
