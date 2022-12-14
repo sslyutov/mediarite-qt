@@ -61,8 +61,13 @@ void CPlaythrough::init(QString audiosrcname, QString audiosinkname)
 			break;
 		}
 	}
-	if( m_audiosource == NULL)
-		m_audiosource = new QAudioSource(format); // initialize with default input device
+	if (m_audiosource == NULL) {
+		if (!QMediaDevices::defaultAudioInput().isNull()) {
+			m_audiosource = new QAudioSource(format); // initialize with default input device
+		}else{
+			return; // no audio input device is available
+		}
+	}
 
 	for(auto devoutput: QMediaDevices::audioOutputs()){
 		if (devoutput.description().compare(audiosinkname) == 0){

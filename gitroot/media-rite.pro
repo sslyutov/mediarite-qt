@@ -30,4 +30,10 @@ DETIDIR_RELEASE = ./RELEASE
 
 QMAKE_CXXFLAGS += /MP
 
+RESOURCES = media-rite.qrc
+
+#RC_FILE = media-rite.rc
+
+RC_ICONS = ./resources/sss_b2_copy.ico
+
 include (media-rite.pri)

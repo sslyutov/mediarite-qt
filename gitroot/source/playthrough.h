@@ -34,10 +34,15 @@ class CPlaythrough : public QWidget
 		void reset();
 
 		void volume(int vol) { 
-			m_audiosink->setVolume((float)vol / 100.0);
+			if(m_audiosink)
+				m_audiosink->setVolume((float)vol / 100.0);
+			
 		};
 		int volume(void) { 
-			return (int)(m_audiosink->volume() * 100.0);
+			if (m_audiosink) {
+				return (int)(m_audiosink->volume() * 100.0);
+			}
+			return 0;
 		};
 		
 

@@ -4,7 +4,6 @@
 * \date September 12, 2022
 */
 
-
 #include <QWidget>
 
 #include <ui_videorecorder.h>
@@ -25,14 +24,13 @@
 
 #include "playthrough.h"
 
-// not ready
-//#include <QAudioOutput>
-//#include <QAudioSink>
 #include <QMediaPlayer>
-//#include <QBuffer>
-//#include <QAudioSource>
-// ---
 
+#include <QSettings>
+
+#include <QStandardPaths>
+
+#include <QDir>
 
 class CVideoRecorderForm :
 
@@ -66,19 +64,11 @@ class CVideoRecorderForm :
 
 		void handleRecorderStateChanged(QMediaRecorder::RecorderState);
 
-		void on_pushVideoSettings_released();
-
-		void on_pushAudioSettings_released();
-
 	private:
 
 		void refreshVideoInput(void);
 
 		QVideoWidget	m_videowidget;
-
-		QLabel			m_labelfilename;
-
-		QPushButton		m_pushLocation;
 
 		QMediaCaptureSession	m_capturesession;
 						
@@ -88,20 +78,39 @@ class CVideoRecorderForm :
 
 		QMediaRecorder	m_recorder;
 
-		QLabel			m_labelDuration;
-
-
 		CPlaythrough	m_playthough;
 
+		const char*		settings_stoprectimer = "AutostopRecordingTimer";
+		qint64			m_stoprectimer;
 
-		// -- not ready
-		//QAudioOutput	m_audiooutput;
-		QMediaPlayer	m_mediaplayer;
-//		QAudioSink		m_audiosink;
-//		//QByteArray	m_bytearray;
-//		//QBuffer		m_buffer;
-//		QAudioSource	m_audiosource;
-//		QAudioInput		m_audioinput;
-		// ---
+		const char*		settings_autostopRecordingFlag = "AutostopRecordingFlag";
+
+		// output location for media
+		const char* settings_outputlocation = "outputLocation";
+
+		const char* settings_recorderGeometry = "recorderGeometry";
+
+		QString outputlocation(void) {    
+			QString outputlocation = QSettings().value(
+				settings_outputlocation, 
+				QStandardPaths::writableLocation(QStandardPaths::MoviesLocation)).toString();
+
+			if ( !QDir(outputlocation).exists() )
+				return QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
+
+			return outputlocation;
+		};
+
+		void outputlocation(QString location)
+		{
+			QSettings().setValue(settings_outputlocation, location);
+		};
+
+		void displayRecDuration(quint64 durvalue);
+
+		/* refresh timer UI controls with the new timer value
+		* \param timervalue value in seconds that has to be displayed
+		*/
+		void displayStopTimer(quint64 timervalue);
 
 };

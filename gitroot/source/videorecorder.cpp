@@ -30,13 +30,27 @@
 
 #include <QSlider>
 
+#include <QMessageBox>
+
+#include "timersettingswidget.h"
+
 CVideoRecorderForm::CVideoRecorderForm() :
-	QWidget(),
-	Ui_VideoRecorderForm(),
-	m_labelfilename("output location:")
+	QWidget()
+	, Ui_VideoRecorderForm()
 {
 
+	// add save restore for auto stop timer, auto stop checkbox state and for default location
 	setupUi(this);
+
+	QByteArray geometry = QSettings().value(settings_recorderGeometry).toByteArray();
+	restoreGeometry(geometry);
+
+	// restore settings
+	m_stoprectimer = QSettings().value(settings_stoprectimer, 3600 + (16 * 60)).toInt(); // restore settings of autostop recording timer or use a default 1 hour 15 minutes value
+
+	cbStopRecordByTimer->setChecked(QSettings().value(settings_autostopRecordingFlag, false).toBool()); // restore activation flag of autostop recording mode.
+
+
 	pushPause->setEnabled(false);
 
 	QGridLayout* innergridVideofinder = new QGridLayout();
@@ -45,21 +59,38 @@ CVideoRecorderForm::CVideoRecorderForm() :
 	m_videowidget.setSizePolicy(QSizePolicy::Policy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 
 	gridVideofinder->addLayout(innergridVideofinder, 1, 0);
-	innergridVideofinder->addWidget(&m_labelfilename, 0, 0);
-	m_labelfilename.setText(QString("output location: %1").arg(m_recorder.actualLocation().toString()));
-	m_labelfilename.setSizePolicy(QSizePolicy::Policy::MinimumExpanding, QSizePolicy::Minimum);
 
-	innergridVideofinder->addWidget(&m_pushLocation, 0, 1);
-	m_pushLocation.setText("Location");
-	m_pushLocation.setSizePolicy(QSizePolicy::Policy::Minimum, QSizePolicy::Minimum);
-	connect(&m_pushLocation, &QPushButton::released, [this]() {
-		QUrl  selurl = QFileDialog::getExistingDirectoryUrl();
-		if (!selurl.isEmpty()) {
-			m_recorder.setOutputLocation(selurl);
-		}
+	labelOutputLocation->setText(QString("output location: %1").arg(outputlocation()));
+	qDebug() << QUrl().fromLocalFile(outputlocation());
+
+	//m_recorder.setOutputLocation(outputlocation());
+	m_recorder.setOutputLocation(QUrl().fromLocalFile(outputlocation()));
+	
+
+	connect(pushOutputLocation, &QPushButton::released, [this]()
+		{
+			while (true) {
+				QUrl selectedoutput = QFileDialog::getExistingDirectoryUrl(this, qAppName(), QUrl::fromLocalFile(outputlocation()));
+				if (selectedoutput.isEmpty())
+					return;
+
+				QFileInfo dir_info(selectedoutput.toLocalFile());
+				if (!dir_info.isWritable()) {
+				
+					if (QMessageBox::information(this, qAppName(),
+						"Selected folder is not writable. Click Yes to select another location.",
+						QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) {
+						return;
+					}
+				
+				}else{
+					outputlocation(selectedoutput.toLocalFile());
+					labelOutputLocation->setText(selectedoutput.toLocalFile());
+					m_recorder.setOutputLocation(selectedoutput);
+					return;
+				}
+			}
 		});
-
-	gridVideofinder->addWidget(&m_labelDuration, 2, 0);
 
 	m_capturesession.setVideoOutput(&m_videowidget);
 
@@ -74,10 +105,11 @@ CVideoRecorderForm::CVideoRecorderForm() :
 
 	connect(cbAudioInputs, SIGNAL(currentIndexChanged(int)), this, SLOT(handleAudioInputsIndexChanged(int)));
 
-
 	handleVideoInputsChanged();
 
 	handleAudioInputsChanged();
+
+	displayStopTimer(m_stoprectimer); // display initial auto stop record timer settings
 
 	connect(&m_mediadevices, SIGNAL(videoInputsChanged()), this, SLOT(handleVideoInputsChanged()));
 
@@ -85,14 +117,38 @@ CVideoRecorderForm::CVideoRecorderForm() :
 
 	bool bcon = connect(&m_recorder, &QMediaRecorder::recorderStateChanged, [=](QMediaRecorder::RecorderState state) {handleRecorderStateChanged(state); });
 
-	bcon = connect(&m_recorder, &QMediaRecorder::actualLocationChanged, [=](const QUrl& location) { m_labelfilename.setText(QString("output location : %1").arg(location.toLocalFile()));  });
+	bcon = connect(&m_recorder, &QMediaRecorder::actualLocationChanged, [=](const QUrl& location) { labelOutputLocation->setText(QString("output location : %1").arg(location.toLocalFile()));  });
 
 	bcon = connect(&m_recorder, &QMediaRecorder::durationChanged, [=](qint64 duration) {
-		QTime time(0, 0, 0, 0);
-		QTime ti = time.addMSecs(duration);
-		m_labelDuration.setText(QString("duration: %1").arg(ti.toString("hh:mm:ss.zzz")));
+		
+		displayRecDuration(duration);
+
+		if (cbStopRecordByTimer->isChecked()) {
+
+			if( m_stoprectimer <= duration/1000 )
+
+				m_recorder.stop();
+
+			displayStopTimer(m_stoprectimer - (duration / 1000));
+			
+		}
 	});
 
+	bcon = connect(pushTimeout, &QPushButton::released, [=]() {
+
+		CTimerSettingsWidget timersettings(m_stoprectimer);
+		timersettings.exec();
+		
+		if (timersettings.result() != QDialog::Accepted)
+			return;
+
+		m_stoprectimer = timersettings.timervalue();
+
+		if (m_recorder.recorderState() != QMediaRecorder::RecordingState
+			|| !cbStopRecordByTimer->isChecked() ) { // display new auto record timer settings immediately if recording is not in progress or autostop recording is inactive
+			displayStopTimer(m_stoprectimer);
+		}
+	});
 
 	hsVolume->setMinimum(0);
 	hsVolume->setMaximum(100);
@@ -100,57 +156,16 @@ CVideoRecorderForm::CVideoRecorderForm() :
 	connect(hsVolume, &QSlider::valueChanged, [=](int value) {
 		m_playthough.volume(value);
 	});
-	
-
-
-	QMediaFormat medfor = m_recorder.mediaFormat();
-
-
-	// the code below is passive now
-	int sel = 0;
-	QList<QMediaFormat::VideoCodec> videoCodes = medfor.supportedVideoCodecs((QMediaFormat::ConversionMode)QMediaFormat::Encode);
-	cbVideoCodec->addItem("Unspecified", (int)QMediaFormat::VideoCodec::Unspecified);
-	for (auto vidcod : videoCodes) {
-		cbVideoCodec->addItem(medfor.videoCodecName(vidcod), (int)vidcod);
-		sel = (medfor.videoCodec() == vidcod) ? cbVideoCodec->count() : sel;
-	}
-	cbVideoCodec->setCurrentIndex(sel);
-
-
-	sel = 0;
-	QList<QMediaFormat::AudioCodec> audioCodes = medfor.supportedAudioCodecs((QMediaFormat::ConversionMode)QMediaFormat::Encode);
-	cbAudioCodec->addItem("Unspecified", (int)QMediaFormat::AudioCodec::Unspecified);
-	for (auto audcod : audioCodes) {
-		cbAudioCodec->addItem(medfor.audioCodecName(audcod), (int)audcod);
-		sel = (medfor.audioCodec() == audcod) ? cbAudioCodec->count() : sel;
-	}
-	cbAudioCodec->setCurrentIndex(sel);
-
-	sel = 0;
-	QList<QMediaFormat::FileFormat> fileFormats = medfor.supportedFileFormats((QMediaFormat::ConversionMode)QMediaFormat::Encode);
-	cbFileFormat->addItem("Unspecified", (int)QMediaFormat::FileFormat::UnspecifiedFormat);
-	for (auto filfor : fileFormats) {
-		cbFileFormat->addItem(medfor.fileFormatName(filfor), (int)filfor);
-		sel = (medfor.fileFormat() == filfor) ? cbFileFormat->count() : sel;
-	}
-	cbFileFormat->setCurrentIndex(sel);
-
-	medfor.setAudioCodec((QMediaFormat::AudioCodec)cbAudioCodec->currentData().toInt());
-	medfor.setFileFormat((QMediaFormat::FileFormat)cbFileFormat->currentData().toInt());
-	medfor.setVideoCodec((QMediaFormat::VideoCodec)cbVideoCodec->currentData().toInt());
-
-	m_recorder.setMediaFormat(medfor);
-
-	cbAudioCodec->setVisible(false);
-	cbVideoCodec->setVisible(false);
-	cbFileFormat->setVisible(false);
-
-	pushVideoSettings->setVisible(false);
-	pushAudioSettings->setVisible(false);
 };
 
 CVideoRecorderForm::~CVideoRecorderForm()
 {
+	QSettings().setValue(settings_stoprectimer, m_stoprectimer); // save autostop recording timer settings.
+
+	QSettings().setValue(settings_autostopRecordingFlag, cbStopRecordByTimer->isChecked()); // save activation flag of autostop recording mode.
+
+	QByteArray recorderGeometry = saveGeometry();
+	QSettings().setValue(settings_recorderGeometry, recorderGeometry);
 };
 
 /*!\brief handle changing cameras selection in combobox wih a list of cameras
@@ -234,19 +249,22 @@ void CVideoRecorderForm::handleVideoInputsChanged(void)
 
 	QCamera* newcamera = new QCamera();
 	
-	newcamera->setCameraDevice(curcamdev);
+	if (!curcamdev.isNull()) {
 
-	newcamera->start();
+		newcamera->setCameraDevice(curcamdev);
 
-	QCamera* prevCamera = m_capturesession.camera();
+		newcamera->start();
 
-	m_capturesession.setCamera(newcamera);
+		QCamera* prevCamera = m_capturesession.camera();
 
-	if (prevCamera)
+		m_capturesession.setCamera(newcamera);
 
-		delete (prevCamera);
+		if (prevCamera)
 
-	cbVideoInputs->setCurrentIndex(sel);
+			delete (prevCamera);
+
+		cbVideoInputs->setCurrentIndex(sel);
+	}
 
 };
 
@@ -284,9 +302,12 @@ void CVideoRecorderForm::handleAudioInputsChanged(void)
 		i++;
 	}
 
-	m_audin.setDevice(curauddev);
+	if (!curauddev.isNull()) {
 
-	cbAudioInputs->setCurrentIndex(sel);
+		m_audin.setDevice(curauddev);
+
+		cbAudioInputs->setCurrentIndex(sel);
+	}
 
 };
 
@@ -302,13 +323,6 @@ void CVideoRecorderForm::on_pushRecord_released()
 			break;
 
 		case QMediaRecorder::StoppedState: {
-
-			QMediaFormat mediaformat = m_recorder.mediaFormat();
-			mediaformat.setVideoCodec((QMediaFormat::VideoCodec) cbVideoCodec->currentData().toInt());
-			mediaformat.setAudioCodec((QMediaFormat::AudioCodec) cbAudioCodec->currentData().toInt());
-			mediaformat.setFileFormat((QMediaFormat::FileFormat)cbFileFormat->currentData().toInt());
-			m_recorder.setMediaFormat(mediaformat);
-
 			m_recorder.record();
 			break;
 		}
@@ -343,16 +357,27 @@ void CVideoRecorderForm::handleRecorderStateChanged(QMediaRecorder::RecorderStat
 		case QMediaRecorder::StoppedState:
 			pushPause->setEnabled(false);
 			pushRecord->setText("Record");
+			displayStopTimer(m_stoprectimer);
 			break;
 	}
 };
 
-
-void CVideoRecorderForm::on_pushVideoSettings_released()
+void CVideoRecorderForm::displayRecDuration(quint64 durvalue)
 {
+	QTime ti_dur(0, 0, 0, 0);
+	ti_dur = ti_dur.addMSecs(durvalue);
+	lcddurhour->display(ti_dur.hour());
+	lcddurmin->display((ti_dur.minute() == 60) ? 0 : ti_dur.minute());
+	lcddursec->display((ti_dur.second() == 60) ? 0 : ti_dur.second());
+};
 
-}
-void CVideoRecorderForm::on_pushAudioSettings_released()
+void CVideoRecorderForm::displayStopTimer(quint64 timervalue)
 {
+	QTime ti_stop(0, 0, 0, 0);
+	ti_stop = ti_stop.addSecs(timervalue);
+	lcdstophour->display(ti_stop.hour());
+	lcdstopmin->display( (ti_stop.minute() == 60) ? 0 : ti_stop.minute() );
+	lcdstopsec->display( (ti_stop.second() == 60) ? 0: ti_stop.second() );
+};
 
-}
+
