@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>resources/sss_b2.ico</file>
+		<file>qml/mediariteAbout.qml</file>
+    </qresource>
+</RCC>
